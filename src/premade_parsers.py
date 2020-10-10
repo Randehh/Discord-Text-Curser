@@ -1,7 +1,7 @@
 import random
 import json
 
-class PremadeParsers():
+class premade_parsers():
 	def __init__(self):
 		with open("Resources/emoji-mappings.json", encoding="utf8") as f:
 		  self.emojisMap = json.load(f)
