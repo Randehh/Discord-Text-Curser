@@ -6,12 +6,10 @@ from discord.ext import commands
 from dotenv import load_dotenv
 import json
 import random
-import DiscordUtils
 from premade_parsers import premade_parsers
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
-MODEL_NAME = "124M"
 
 logging.basicConfig(level=logging.INFO)
 
@@ -21,6 +19,7 @@ premade_parsers_instance = premade_parsers()
 commandPrefix = '??'
 bot = commands.Bot(command_prefix=commandPrefix)
 
+#Premade parsers
 @bot.command(name='curse_emoji', help='Curse a message with emojis')
 async def curse(ctx):
 	contentToCurse = ctx.message.content.replace("??curse_emoji ", "")
