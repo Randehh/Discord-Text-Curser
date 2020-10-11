@@ -25,7 +25,7 @@ bot = commands.Bot(command_prefix=commandPrefix)
 ##########################################
 # Custom curse creation flow
 ##########################################
-@bot.command(name='curse_custom_start', help='Starts creation of a new curse')
+@bot.command(name='curse_start', help='Starts creation of a new curse')
 async def custom_curse_start(ctx):
 	await ctx.message.delete()
 	await ctx.author.send("Let's start creating a new curse.\n\nWhat would you like to name your curse?")
@@ -71,7 +71,7 @@ async def on_curse_another_rule(conversation_data, message):
 	elif message_content == "no":
 		curse = conversation_data["curse"]
 		file_utils_instance.create_file_for_user(conversation_data["author"], curse.name + ".json", curse.get_json_string())
-		await author.send("New curse ***" + curse.name + "*** is saved.\nUse \"??curse_custom_use " + curse.name + " <message to curse>\" to use the curse.")
+		await author.send("New curse ***" + curse.name + "*** is saved.\nUse \"??curse_use " + curse.name + " <message to curse>\" to use the curse.")
 		conversation_manager_instance.stop_conversation(author)
 	else:
 		await author.send("Response is not valid.\nReply \"YES\" or \"NO\"")
@@ -95,7 +95,7 @@ def get_rule_options():
 ##########################################
 # Custom curse usage
 ##########################################
-@bot.command(name='curse_custom_use', help='Snuggles and pounces on your text uwu')
+@bot.command(name='curse_use', help='Snuggles and pounces on your text uwu')
 async def custom_use(ctx, curse_name):	
 	json_data_raw = file_utils_instance.read_file_for_user(ctx.author, curse_name + ".json")
 	json_data = json.loads(json_data_raw)
