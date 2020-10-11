@@ -7,6 +7,13 @@ class rule_types(IntEnum):
     INSERT = 2
 
 def create_rule_from_type(rule_type):
+    """Create a new curse rule by the given rule type.
+    
+    Parameters
+    -----------
+    rule_type
+        A value of the enum rule_types"""
+
     new_rule = custom_curse_rule()
     if rule_type == rule_types.REPLACE.value:
         new_rule = custom_curse_rule_replace("", "")
@@ -16,17 +23,23 @@ def create_rule_from_type(rule_type):
     return new_rule
 
 class custom_curse():
+    """Represents a curse that can parse text according to rules given."""
+
     def __init__(self, name):
         self.name = name
         self.rules = []
     
     def parse(self, text):
+        """Parse the given text through all rules in this curse."""
+
         for rule in self.rules:
             text = rule.parse(text)
         
         return text
     
     def get_json_string(self):
+        """Serializes the entire curse into a json format string."""
+
         serialized_rules = []
         for rule in self.rules:
             serialized_rules.append(rule.serialize())
@@ -34,10 +47,14 @@ class custom_curse():
         return json.dumps(serialized_rules)
     
     def create_from_json(self, data):
+        """Configures the curse by the given json."""
+
         for rule_data in data:
             self.add_rule_from_data(rule_data)
     
     def add_rule_from_data(self, rule_data):
+        """Adds a curse rule from a serialized json file"""
+
         rule_type = rule_data["type"]
         new_rule = create_rule_from_type(rule_type)
         
@@ -48,6 +65,12 @@ class custom_curse():
         self.rules.append(new_rule)
 
 class custom_curse_rule():
+    """Represents a generic class cwhich can parse and modify a string.
+    .. note::
+
+        Should not be used separately, instead use one of the derived classes.
+    """
+
     rule_type = rule_types.NONE.value
     
     def parse(self, text):
@@ -63,6 +86,8 @@ class custom_curse_rule():
         raise NotImplementedError()
 
 class custom_curse_rule_replace(custom_curse_rule):
+    """Parses text by executing a direct replace of character sequences."""
+
     def __init__(self, to_replace, replacement):
         self.rule_type = rule_types.REPLACE.value
         self.to_replace = to_replace
@@ -101,6 +126,8 @@ class custom_curse_rule_replace(custom_curse_rule):
         self.all_params_set_callback = None
 
 class custom_curse_rule_insert(custom_curse_rule):
+    """Parses text by inserting a character sequence every given amount of words."""
+
     def __init__(self, to_insert, frequency):
         self.rule_type = rule_types.INSERT.value
         self.to_insert = to_insert
