@@ -14,15 +14,15 @@ def create_rule_from_type(rule_type):
     rule_type
         A value of the enum rule_types"""
 
-    new_rule = custom_curse_rule()
+    new_rule = curse_rule()
     if rule_type == rule_types.REPLACE.value:
-        new_rule = custom_curse_rule_replace("", "")
+        new_rule = curse_rule_replace("", "")
     elif rule_type == rule_types.INSERT.value:
-        new_rule = custom_curse_rule_insert("", 0)
+        new_rule = curse_rule_insert("", 0)
     
     return new_rule
 
-class custom_curse():
+class curse():
     """Represents a curse that can parse text according to rules given."""
 
     def __init__(self, name):
@@ -64,7 +64,7 @@ class custom_curse():
         new_rule.deserialize(rule_data["data"])
         self.rules.append(new_rule)
 
-class custom_curse_rule():
+class curse_rule():
     """Represents a generic class cwhich can parse and modify a string.
     .. note::
 
@@ -85,7 +85,7 @@ class custom_curse_rule():
     async def request_parameters(self, conversation_data, all_params_set_callback):
         raise NotImplementedError()
 
-class custom_curse_rule_replace(custom_curse_rule):
+class curse_rule_replace(curse_rule):
     """Parses text by executing a direct replace of character sequences."""
 
     def __init__(self, to_replace, replacement):
@@ -125,7 +125,7 @@ class custom_curse_rule_replace(custom_curse_rule):
         await self.all_params_set_callback(conversation_data, self)
         self.all_params_set_callback = None
 
-class custom_curse_rule_insert(custom_curse_rule):
+class curse_rule_insert(curse_rule):
     """Parses text by inserting a character sequence every given amount of words."""
 
     def __init__(self, to_insert, frequency):

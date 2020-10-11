@@ -4,7 +4,7 @@ class file_utils():
 	def get_user_folder(self, user):
 		"""Gets the root folder for a user."""
 
-		return "Custom_Curses/" + str(user.id)
+		return "Curses/" + str(user.id)
 		
 	def create_folder_for_user(self, user):
 		"""Creates a personal folder for the given user if it does not exist."""

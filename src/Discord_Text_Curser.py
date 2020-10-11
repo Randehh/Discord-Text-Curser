@@ -6,10 +6,9 @@ from discord.ext import commands
 from dotenv import load_dotenv
 import json
 import random
-from premade_parsers import premade_parsers
 from file_utils import file_utils
 from conversation_manager import conversation_manager
-from custom_curse import *
+from curse import *
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -17,16 +16,11 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 logging.basicConfig(level=logging.INFO)
 
 #Create classes
-premade_parsers_instance = premade_parsers()
 file_utils_instance = file_utils()
 conversation_manager_instance = conversation_manager()
 
 commandPrefix = '??'
 bot = commands.Bot(command_prefix=commandPrefix)
-
-#Helper functions
-def get_user_folder(user):
-	return "Custom_Curses/" + str(user.id)
 
 ##########################################
 # Custom curse creation flow
@@ -40,7 +34,7 @@ async def custom_curse_start(ctx):
 
 async def on_curse_name_received(conversation_data, message):
 	curse_name = message.content.lower().replace(" ", "_")
-	new_curse = custom_curse(curse_name)
+	new_curse = curse(curse_name)
 	conversation_data["curse"] = new_curse
 
 	message_to_send = "Creating new curse called: ***" + curse_name + "***\n\n"
@@ -106,7 +100,7 @@ async def custom_use(ctx, curse_name):
 	json_data_raw = file_utils_instance.read_file_for_user(ctx.author, curse_name + ".json")
 	json_data = json.loads(json_data_raw)
 
-	new_custom_curse = custom_curse(curse_name)
+	new_custom_curse = curse(curse_name)
 	new_custom_curse.create_from_json(json_data)
 
 	await ctx.message.delete()
@@ -121,24 +115,5 @@ async def on_curse_content_received(conversation_data, message):
 	author = conversation_data["author"]
 	await author.send(cursed_message)
 	conversation_manager_instance.stop_conversation(author)
-
-##########################################
-#Premade parsers
-##########################################
-@bot.command(name='curse_emoji', help='Curse a message with emojis')
-async def curse(ctx):
-	contentToCurse = ctx.message.content.replace("??curse_emoji ", "")
-	new_content = premade_parsers_instance.emojify(contentToCurse)
-	
-	await ctx.message.delete()
-	await ctx.send(ctx.author.display_name + ": " + new_content)
-
-@bot.command(name='curse_uwu', help='Snuggles and pounces on your text uwu')
-async def uwu(ctx):
-	contentToCurse = ctx.message.content.replace("??curse_uwu ", "")
-	new_content = premade_parsers_instance.uwuify(contentToCurse)
-	
-	await ctx.message.delete()
-	await ctx.send(ctx.author.display_name + ": " + new_content)
 
 bot.run(TOKEN)
