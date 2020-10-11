@@ -2,12 +2,22 @@ from enum import IntEnum
 import json
 
 class rule_types(IntEnum):
-    UNKNOWN = 0
+    NONE = 0
     REPLACE = 1
     INSERT = 2
 
+def create_rule_from_type(rule_type):
+    new_rule = custom_curse_rule()
+    if rule_type == rule_types.REPLACE.value:
+        new_rule = custom_curse_rule_replace("", "")
+    elif rule_type == rule_types.INSERT.value:
+        new_rule = custom_curse_rule_insert("", 0)
+    
+    return new_rule
+
 class custom_curse():
-    def __init__(self):
+    def __init__(self, name):
+        self.name = name
         self.rules = []
     
     def parse(self, text):
@@ -29,20 +39,16 @@ class custom_curse():
     
     def add_rule_from_data(self, rule_data):
         rule_type = rule_data["type"]
-        new_rule = custom_curse_rule()
-        if rule_type == rule_types.REPLACE.value:
-            new_rule = custom_curse_rule_replace("", "")
-        elif rule_type == rule_types.INSERT.value:
-            new_rule = custom_curse_rule_insert("", 0)
+        new_rule = create_rule_from_type(rule_type)
         
-        if new_rule.rule_type == rule_types.UNKNOWN.value:
+        if new_rule.rule_type == rule_types.NONE.value:
             return
         
         new_rule.deserialize(rule_data["data"])
         self.rules.append(new_rule)
 
 class custom_curse_rule():
-    rule_type = rule_types.UNKNOWN.value
+    rule_type = rule_types.NONE.value
     
     def parse(self, text):
         raise NotImplementedError()
@@ -51,6 +57,9 @@ class custom_curse_rule():
         raise NotImplementedError()
 
     def deserialize(self, data):
+        raise NotImplementedError()
+
+    async def request_parameters(self, conversation_data, all_params_set_callback):
         raise NotImplementedError()
 
 class custom_curse_rule_replace(custom_curse_rule):
@@ -74,6 +83,22 @@ class custom_curse_rule_replace(custom_curse_rule):
     def deserialize(self, data):
         self.to_replace = data["to_replace"]
         self.replacement = data["replacement"]
+    
+    async def request_parameters(self, conversation_data, all_params_set_callback):
+        self.all_params_set_callback = all_params_set_callback
+        await conversation_data["author"].send("What would you like to replace?")
+        conversation_data["callback"] = self.on_get_param_to_replace
+    
+    async def on_get_param_to_replace(self, conversation_data, message):
+        self.to_replace = message.content
+        await conversation_data["author"].send("What would you like to replace ***" + self.to_replace + "*** with?")
+        conversation_data["callback"] = self.on_get_param_replacement
+    
+    async def on_get_param_replacement(self, conversation_data, message):
+        self.replacement = message.content
+        await conversation_data["author"].send("Rule set: replace ***" + self.to_replace + "*** with ***" + self.replacement + "***")
+        await self.all_params_set_callback(conversation_data, self)
+        self.all_params_set_callback = None
 
 class custom_curse_rule_insert(custom_curse_rule):
     def __init__(self, to_insert, frequency):
@@ -106,3 +131,19 @@ class custom_curse_rule_insert(custom_curse_rule):
     def deserialize(self, data):
         self.to_insert = data["to_insert"]
         self.frequency = data["frequency"]
+    
+    async def request_parameters(self, conversation_data, all_params_set_callback):
+        self.all_params_set_callback = all_params_set_callback
+        await conversation_data["author"].send("What would you like to insert?")
+        conversation_data["callback"] = self.on_get_param_to_insert
+    
+    async def on_get_param_to_insert(self, conversation_data, message):
+        self.to_insert = message.content
+        await conversation_data["author"].send("After how many words would you like to insert ***" + self.to_insert + "***?")
+        conversation_data["callback"] = self.on_get_param_frequency
+    
+    async def on_get_param_frequency(self, conversation_data, message):
+        self.frequency = int(message.content)
+        await conversation_data["author"].send("Rule set: insert ***" + self.to_insert + "*** after each ***" + str(self.frequency) + "***")
+        await self.all_params_set_callback(conversation_data, self)
+        self.all_params_set_callback = None
