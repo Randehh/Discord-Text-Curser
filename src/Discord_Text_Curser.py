@@ -58,7 +58,8 @@ async def on_curse_rule_params_set(conversation_data, new_rule):
 	conversation_data["curse"].rules.append(new_rule)
 
 	author = conversation_data["author"]
-	await author.send("Would you like to add another rule?\nReply \"YES\" or \"NO\"")
+	curse_description = conversation_data["curse"].get_rules_descriptions()
+	await author.send(curse_description + "\nWould you like to add another rule?\nReply \"YES\" or \"NO\"")
 
 	conversation_manager_instance.set_callback_for_user(author, on_curse_another_rule)
 

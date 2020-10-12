@@ -37,6 +37,14 @@ class curse():
         
         return text
     
+    def get_rules_descriptions(self):
+        to_return = "Rules in curse:\n"
+        count = 1
+        for rule in self.rules:
+            to_return = to_return + str(count) + ": " + rule.get_description() + "\n"
+            count = count + 1
+        return to_return
+    
     def get_json_string(self):
         """Serializes the entire curse into a json format string."""
 
@@ -76,6 +84,9 @@ class curse_rule():
     def parse(self, text):
         raise NotImplementedError()
 
+    def get_description(self):
+        raise NotImplementedError()
+
     def serialize(self):
         raise NotImplementedError()
 
@@ -84,6 +95,14 @@ class curse_rule():
 
     async def request_parameters(self, conversation_data, all_params_set_callback):
         raise NotImplementedError()
+
+    async def is_string_int(self, string, user):
+        try: 
+            int(string)
+            return True
+        except ValueError:
+            await user.send(string + " is not a number.")
+            return False
 
 class curse_rule_replace(curse_rule):
     """Parses text by executing a direct replace of character sequences."""
@@ -96,6 +115,9 @@ class curse_rule_replace(curse_rule):
     def parse(self, text):
         return text.replace(self.to_replace, self.replacement)
     
+    def get_description(self):
+        return "Replace ***" + self.to_replace + "*** with ***" + self.replacement + "***"
+
     def serialize(self):
         return {
             "type": self.rule_type,
@@ -121,7 +143,7 @@ class curse_rule_replace(curse_rule):
     
     async def on_get_param_replacement(self, conversation_data, message):
         self.replacement = message.content
-        await conversation_data["author"].send("Rule set: replace ***" + self.to_replace + "*** with ***" + self.replacement + "***")
+        await conversation_data["author"].send("Rule set: " + self.get_description())
         await self.all_params_set_callback(conversation_data, self)
         self.all_params_set_callback = None
 
@@ -145,6 +167,9 @@ class curse_rule_insert(curse_rule):
                 count = 0
         
         return new_text
+    
+    def get_description(self):
+        return "Insert ***" + self.to_insert + "*** after each ***" + str(self.frequency) + "*** words"
     
     def serialize(self):
         return {
@@ -170,7 +195,10 @@ class curse_rule_insert(curse_rule):
         conversation_data["callback"] = self.on_get_param_frequency
     
     async def on_get_param_frequency(self, conversation_data, message):
+        if await self.is_string_int(message.content, conversation_data["author"]) == False:
+            return
+        
         self.frequency = int(message.content)
-        await conversation_data["author"].send("Rule set: insert ***" + self.to_insert + "*** after each ***" + str(self.frequency) + "***")
+        await conversation_data["author"].send("Rule set: " + self.get_description())
         await self.all_params_set_callback(conversation_data, self)
         self.all_params_set_callback = None
