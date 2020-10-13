@@ -12,29 +12,16 @@ class conversation_manager():
         if self.is_in_converation(user) == False:
             return
         
-        conversation_data = self.conversations[user.id]
-        callback = conversation_data["callback"]
-        await callback(conversation_data, message)
+        conversation = self.conversations[user.id]
+        await conversation.on_receive_message(message)
     
-    def set_callback_for_user(self, user, callback):
-        """Updates a callback for a conversation which will be called when a user sends the bot a direct message."""
-
-        if self.is_in_converation(user) == False:
-            return
-        
-        conversation_data = self.conversations[user.id]
-        conversation_data["callback"] = callback
-    
-    def start_conversation(self, user, callback):
+    def start_conversation(self, conversation):
         """Initializes a new conversation table and enables callbacks to be called."""
 
-        if self.is_in_converation(user) == True:
+        if self.is_in_converation(conversation.user) == True:
             return
         
-        self.conversations[user.id] = {}
-        self.conversations[user.id]["author"] = user
-        self.set_callback_for_user(user, callback)
-        return self.conversations[user.id]
+        self.conversations[conversation.user.id] = conversation
     
     def stop_conversation(self, user):
         """Stops callbacks from being called and deletes conversation data."""

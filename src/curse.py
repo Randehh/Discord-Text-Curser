@@ -93,8 +93,11 @@ class curse_rule():
     def deserialize(self, data):
         raise NotImplementedError()
 
-    async def request_parameters(self, conversation_data, all_params_set_callback):
-        raise NotImplementedError()
+    async def request_parameters(self, conversation, all_params_set_callback):
+        self.request_parameters_data = {
+            "conversation": conversation,
+            "all_params_set_callback": all_params_set_callback
+        }
 
     async def is_string_int(self, string, user):
         try: 
@@ -131,20 +134,20 @@ class curse_rule_replace(curse_rule):
         self.to_replace = data["to_replace"]
         self.replacement = data["replacement"]
     
-    async def request_parameters(self, conversation_data, all_params_set_callback):
-        self.all_params_set_callback = all_params_set_callback
-        await conversation_data["author"].send("What would you like to replace?")
-        conversation_data["callback"] = self.on_get_param_to_replace
+    async def request_parameters(self, conversation, all_params_set_callback):
+        await super().request_parameters(conversation, all_params_set_callback)
+        await conversation.send_user_message("What would you like to replace?")
+        conversation.set_next_callback(self.on_get_param_to_replace)
     
-    async def on_get_param_to_replace(self, conversation_data, message):
+    async def on_get_param_to_replace(self, message):
         self.to_replace = message.content
-        await conversation_data["author"].send("What would you like to replace ***" + self.to_replace + "*** with?")
-        conversation_data["callback"] = self.on_get_param_replacement
+        await self.request_parameters_data["conversation"].send_user_message("What would you like to replace ***" + self.to_replace + "*** with?")
+        self.request_parameters_data["conversation"].set_next_callback(self.on_get_param_replacement)
     
-    async def on_get_param_replacement(self, conversation_data, message):
+    async def on_get_param_replacement(self, message):
         self.replacement = message.content
-        await conversation_data["author"].send("Rule set: " + self.get_description())
-        await self.all_params_set_callback(conversation_data, self)
+        await self.request_parameters_data["conversation"].send_user_message("Rule set: " + self.get_description())
+        await self.request_parameters_data["all_params_set_callback"](self)
         self.all_params_set_callback = None
 
 class curse_rule_insert(curse_rule):
@@ -184,21 +187,21 @@ class curse_rule_insert(curse_rule):
         self.to_insert = data["to_insert"]
         self.frequency = data["frequency"]
     
-    async def request_parameters(self, conversation_data, all_params_set_callback):
-        self.all_params_set_callback = all_params_set_callback
-        await conversation_data["author"].send("What would you like to insert?")
-        conversation_data["callback"] = self.on_get_param_to_insert
+    async def request_parameters(self, conversation, all_params_set_callback):
+        await super().request_parameters(conversation, all_params_set_callback)
+        await conversation.send_user_message("What would you like to insert?")
+        conversation.set_next_callback(self.on_get_param_to_insert)
     
-    async def on_get_param_to_insert(self, conversation_data, message):
+    async def on_get_param_to_insert(self, message):
         self.to_insert = message.content
-        await conversation_data["author"].send("After how many words would you like to insert ***" + self.to_insert + "***?")
-        conversation_data["callback"] = self.on_get_param_frequency
+        await self.request_parameters_data["conversation"].send_user_message("After how many words would you like to insert ***" + self.to_insert + "***?")
+        self.request_parameters_data["conversation"].set_next_callback(self.on_get_param_frequency)
     
-    async def on_get_param_frequency(self, conversation_data, message):
-        if await self.is_string_int(message.content, conversation_data["author"]) == False:
+    async def on_get_param_frequency(self, message):
+        if await self.is_string_int(message.content, self.request_parameters_data["conversation"].user) == False:
             return
         
         self.frequency = int(message.content)
-        await conversation_data["author"].send("Rule set: " + self.get_description())
-        await self.all_params_set_callback(conversation_data, self)
-        self.all_params_set_callback = None
+        await self.request_parameters_data["conversation"].send_user_message("Rule set: " + self.get_description())
+        await self.request_parameters_data["all_params_set_callback"](self)
+        self.request_parameters_data = None
