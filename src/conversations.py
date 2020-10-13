@@ -47,7 +47,7 @@ class conversation_main_menu(conversation_base):
 		await self.send_user_message("You selected: " + message.content)
 
 class conversation_create_curse(conversation_base):
-	"""Contains logic for the main menu, flowing into different types of conversations from there"""
+	"""Creates a curse, then flows into `conversation_add_curse_rule`"""
 	
 	def __init__(self, user):
 		super().__init__(user)
@@ -67,10 +67,27 @@ class conversation_create_curse(conversation_base):
 	async def on_curse_name_received(self, message):
 		curse_name = message.content.lower().replace(" ", "_")
 		new_curse = curse(curse_name)
-		self.curse = new_curse
 
 		message_to_send = "Creating new curse called: ***" + curse_name + "***\n\n"
 		await self.user.send(message_to_send)
+		await self.switch_to_next_conversation(conversation_add_curse_rule(self.user, new_curse))
+
+class conversation_add_curse_rule(conversation_base):
+	"""Starts a loop for adding rules to a given curse"""
+	
+	def __init__(self, user, curse):
+		super().__init__(user)
+		self.curse = curse
+	
+	def get_rule_options(self):
+		message = ""
+		for rule in rule_types:
+			pretty_rule_name = rule.name.replace("_", " ").title()
+			message = message + str(rule.value) + " - " + pretty_rule_name + "\n"
+		return message
+
+	async def start_conversation(self):
+		await super().start_conversation()
 		await self.start_new_rule_flow()
 
 	async def start_new_rule_flow(self):
