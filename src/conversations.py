@@ -53,13 +53,15 @@ class conversation_main_menu(conversation_base):
 		REMOVE_CURSE = 3
 		ENABLE_CURSE = 4
 		DISABLE_CURSE = 5
+		BROWSE_BY_USER = 6
+		BROWSE_BY_SERVER = 7
 
 	def __init__(self, user):
 		super().__init__(user)
 
 	async def start_conversation(self):
 		await super().start_conversation()
-		menu_options_string = conversation_utils.get_enum_options(conversation_main_menu.menu_options)
+		menu_options_string = conversation_utils.get_enum_options(conversation_main_menu.menu_options, { 0: "Curse management", 5: "Curse browsing"})
 		message_to_send = "What would you like to do?\n" + menu_options_string + "Reply with the number."
 		await self.send_user_message(message_to_send)
 		self.set_next_callback(self.on_selection_received)

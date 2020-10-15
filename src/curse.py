@@ -187,6 +187,10 @@ class curse_rule_replace_word(curse_rule):
         conversation.set_next_callback(self.on_get_param_to_replace)
     
     async def on_get_param_to_replace(self, message):
+        if len(message.content.split()) != 1:
+            await self.request_parameters_data["conversation"].send_user_message("Please give one word to replace.")
+            return
+        
         self.to_replace = message.content
         await self.request_parameters_data["conversation"].send_user_message("What would you like to replace ***" + self.to_replace + "*** with?")
         self.request_parameters_data["conversation"].set_next_callback(self.on_get_param_replacement)

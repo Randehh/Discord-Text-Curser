@@ -5,14 +5,22 @@ from enum import IntEnum
 
 guild_webhook_ids = {}
 
-def get_enum_options(enum):
+def get_enum_options(enum, headers = {}):
 	message = "```"
+	count = 0
 	for enum_value in enum:
 		if enum_value.value == -1:
 			continue
 		
+		if count in headers:
+			if count != 0:
+				message = message + "\n"
+			message = message + headers[count] + "\n"
+		
 		pretty_enum_name = enum_value.name.replace("_", " ").title()
 		message = message + str(enum_value.value) + ":\t" + pretty_enum_name + "\n"
+		
+		count = count + 1
 	return message + "```"
 
 async def get_conversation_webhook(channel):
