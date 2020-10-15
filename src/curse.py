@@ -6,6 +6,7 @@ class rule_types(IntEnum):
     INVALID = -1
     REPLACE = 1
     INSERT = 2
+    REPLACE_WORD = 3
 
 def create_rule_from_type(rule_type):
     """Create a new curse rule by the given rule type.
@@ -19,6 +20,8 @@ def create_rule_from_type(rule_type):
         return curse_rule_replace("", "")
     elif rule_type == rule_types.INSERT.value:
         return curse_rule_insert("", 0)
+    elif rule_type == rule_types.REPLACE_WORD.value:
+        return curse_rule_replace_word("", "")
     
     return None
 
@@ -112,6 +115,58 @@ class curse_rule_replace(curse_rule):
     
     def get_description(self):
         return "Replace ***" + self.to_replace + "*** with ***" + self.replacement + "***"
+
+    def serialize(self):
+        return {
+            "type": self.rule_type,
+            "data": {
+                "to_replace": self.to_replace,
+                "replacement": self.replacement
+            }
+        }
+    
+    def deserialize(self, data):
+        self.to_replace = data["to_replace"]
+        self.replacement = data["replacement"]
+    
+    async def request_parameters(self, conversation, all_params_set_callback):
+        await super().request_parameters(conversation, all_params_set_callback)
+        await conversation.send_user_message("What would you like to replace?")
+        conversation.set_next_callback(self.on_get_param_to_replace)
+    
+    async def on_get_param_to_replace(self, message):
+        self.to_replace = message.content
+        await self.request_parameters_data["conversation"].send_user_message("What would you like to replace ***" + self.to_replace + "*** with?")
+        self.request_parameters_data["conversation"].set_next_callback(self.on_get_param_replacement)
+    
+    async def on_get_param_replacement(self, message):
+        self.replacement = message.content
+        await self.request_parameters_data["conversation"].send_user_message("Rule set: " + self.get_description())
+        await self.request_parameters_data["all_params_set_callback"](self)
+        self.request_parameters_data = None
+
+class curse_rule_replace_word(curse_rule):
+    """Parses text by replacing a word with another word."""
+
+    def __init__(self, to_replace, replacement):
+        self.rule_type = rule_types.REPLACE_WORD.value
+        self.to_replace = to_replace
+        self.replacement = replacement
+    
+    def parse(self, text):
+        result = ""
+        symbols_to_ignore = r'.,;(){}[]_*~'
+
+        for word in text.split():
+            striped_word = word.strip(symbols_to_ignore)
+            if striped_word == self.to_replace:                    
+                result = result + " " + word.replace(self.to_replace, self.replacement)
+            else:
+                result = result + " " + word
+        return result
+    
+    def get_description(self):
+        return "Replace the word ***" + self.to_replace + "*** with ***" + self.replacement + "***"
 
     def serialize(self):
         return {
