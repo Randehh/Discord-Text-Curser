@@ -1,5 +1,6 @@
 from enum import IntEnum
 import json
+import conversation_utils
 
 class rule_types(IntEnum):
     NONE = 0
@@ -99,14 +100,6 @@ class curse_rule():
             "all_params_set_callback": all_params_set_callback
         }
 
-    async def is_string_int(self, string, user):
-        try: 
-            int(string)
-            return True
-        except ValueError:
-            await user.send(string + " is not a number.")
-            return False
-
 class curse_rule_replace(curse_rule):
     """Parses text by executing a direct replace of character sequences."""
 
@@ -148,7 +141,7 @@ class curse_rule_replace(curse_rule):
         self.replacement = message.content
         await self.request_parameters_data["conversation"].send_user_message("Rule set: " + self.get_description())
         await self.request_parameters_data["all_params_set_callback"](self)
-        self.all_params_set_callback = None
+        self.request_parameters_data = None
 
 class curse_rule_insert(curse_rule):
     """Parses text by inserting a character sequence every given amount of words."""
@@ -198,7 +191,7 @@ class curse_rule_insert(curse_rule):
         self.request_parameters_data["conversation"].set_next_callback(self.on_get_param_frequency)
     
     async def on_get_param_frequency(self, message):
-        if await self.is_string_int(message.content, self.request_parameters_data["conversation"].user) == False:
+        if await conversation_utils.is_string_int(message.content, self.request_parameters_data["conversation"].user) == False:
             return
         
         self.frequency = int(message.content)
