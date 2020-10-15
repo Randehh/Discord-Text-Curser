@@ -3,7 +3,7 @@ import json
 import conversation_utils
 
 class rule_types(IntEnum):
-    NONE = 0
+    INVALID = -1
     REPLACE = 1
     INSERT = 2
 
@@ -15,13 +15,12 @@ def create_rule_from_type(rule_type):
     rule_type
         A value of the enum rule_types"""
 
-    new_rule = curse_rule()
     if rule_type == rule_types.REPLACE.value:
-        new_rule = curse_rule_replace("", "")
+        return curse_rule_replace("", "")
     elif rule_type == rule_types.INSERT.value:
-        new_rule = curse_rule_insert("", 0)
+        return curse_rule_insert("", 0)
     
-    return new_rule
+    return None
 
 class curse():
     """Represents a curse that can parse text according to rules given."""
@@ -67,7 +66,7 @@ class curse():
         rule_type = rule_data["type"]
         new_rule = create_rule_from_type(rule_type)
         
-        if new_rule.rule_type == rule_types.NONE.value:
+        if new_rule.rule_type == rule_types.INVALID.value:
             return
         
         new_rule.deserialize(rule_data["data"])
@@ -80,7 +79,7 @@ class curse_rule():
         Should not be used separately, instead use one of the derived classes.
     """
 
-    rule_type = rule_types.NONE.value
+    rule_type = rule_types.INVALID.value
     
     def parse(self, text):
         raise NotImplementedError()

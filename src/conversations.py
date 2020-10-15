@@ -12,15 +12,23 @@ class conversation_base():
 	def __init__(self, user):
 		self.user = user
 		self.callback = self.no_callback_set
+		self.parent_conversation = None
 
 	async def start_conversation(self):
 		conversation_base.conversation_manager.start_conversation(self)
 	
-	def stop_conversation(self):
+	async def stop_conversation(self, child_callback_result = None):
 		conversation_base.conversation_manager.stop_conversation(self.user)
+		if self.parent_conversation:
+			conversation_base.conversation_manager.start_conversation(self.parent_conversation)
+			if child_callback_result: await child_callback_result()
 	
 	async def switch_to_next_conversation(self, next_conversation):
-		self.stop_conversation()
+		await self.stop_conversation()
+		await next_conversation.start_conversation()
+	
+	async def start_nested_conversation(self, next_conversation):
+		next_conversation.parent_conversation = self
 		await next_conversation.start_conversation()
 
 	async def send_user_message(self, message_to_send):
@@ -34,31 +42,24 @@ class conversation_base():
 	
 	async def no_callback_set(self, message):
 		await self.send_user_message("Whoops... something went wrong, exiting conversation.")
-		self.stop_conversation()
-
-	def get_enum_options(self, enum):
-		message = "```"
-		for enum_value in enum:
-			pretty_enum_name = enum_value.name.replace("_", " ").title()
-			message = message + str(enum_value.value) + ":\t" + pretty_enum_name + "\n"
-		return message + "```"
+		await self.stop_conversation()
 
 class conversation_main_menu(conversation_base):
 	"""Contains logic for the main menu, flowing into different types of conversations from there"""
 	
 	class menu_options(IntEnum):
-		CREATE_CURSE = 0
-		EDIT_CURSE = 1
-		REMOVE_CURSE = 2
-		ENABLE_CURSE = 3
-		DISABLE_CURSE = 4
+		CREATE_CURSE = 1
+		EDIT_CURSE = 2
+		REMOVE_CURSE = 3
+		ENABLE_CURSE = 4
+		DISABLE_CURSE = 5
 
 	def __init__(self, user):
 		super().__init__(user)
 
 	async def start_conversation(self):
 		await super().start_conversation()
-		menu_options_string = self.get_enum_options(conversation_main_menu.menu_options)
+		menu_options_string = conversation_utils.get_enum_options(conversation_main_menu.menu_options)
 		message_to_send = "What would you like to do?\n" + menu_options_string + "Reply with the number."
 		await self.send_user_message(message_to_send)
 		self.set_next_callback(self.on_selection_received)
@@ -68,8 +69,12 @@ class conversation_main_menu(conversation_base):
 			return
 		
 		selection = int(message.content)
-		if selection == conversation_main_menu.menu_options.ENABLE_CURSE:
+		if selection == conversation_main_menu.menu_options.CREATE_CURSE:
+			await self.switch_to_next_conversation(conversation_create_curse(self.user))
+		elif selection == conversation_main_menu.menu_options.ENABLE_CURSE:
 			await self.switch_to_next_conversation(conversation_enable_curse(self.user))
+		elif selection == conversation_main_menu.menu_options.DISABLE_CURSE:
+			user_metadata.set_curse_disabled(self.user)
 
 class conversation_enable_curse(conversation_base):
 	"""Enables a curse"""
@@ -88,7 +93,7 @@ class conversation_enable_curse(conversation_base):
 
 		message_to_send = "Curse activated: ***" + curse_name + "***"
 		await self.user.send(message_to_send)
-		self.stop_conversation()
+		await self.stop_conversation()
 		
 
 class conversation_create_curse(conversation_base):
@@ -138,7 +143,7 @@ class conversation_add_curse_rule(conversation_base):
 		await self.start_new_rule_flow()
 
 	async def start_new_rule_flow(self):
-		rule_options = self.get_enum_options(rule_types)
+		rule_options = conversation_utils.get_enum_options(rule_types)
 		message_to_send = "What type of rule would you like to add?\n" + rule_options + "Reply with the number."
 
 		author = self.user
@@ -147,28 +152,62 @@ class conversation_add_curse_rule(conversation_base):
 		self.set_next_callback(self.on_curse_rule_received)
 
 	async def on_curse_rule_received(self, message):
+		if await conversation_utils.is_string_int(message.content, self.user) == False:
+			return
+
 		new_rule = create_rule_from_type(int(message.content))
+		if not new_rule:
+			await self.user.send("Input `" + message.content + "` is not a valid option.")
+			return
+
 		await new_rule.request_parameters(self, self.on_curse_rule_params_set)
 
 	async def on_curse_rule_params_set(self, new_rule):
 		self.curse.rules.append(new_rule)
 
-		author = self.user
 		curse_description = self.curse.get_rules_descriptions()
-		await author.send(curse_description + "\nWould you like to add another rule?\nReply \"yes\" or \"no\"")
+		yes_no_prompt_conversation = conversation_util_yes_no_prompt(
+			self.user,
+			curse_description + "\nWould you like to add another rule?",
+			self.on_add_rule_yes,
+			self.on_add_rule_no)
+		await self.start_nested_conversation(yes_no_prompt_conversation)
 
-		self.set_next_callback(self.on_curse_another_rule)
+	async def on_add_rule_yes(self):
+		await self.start_new_rule_flow()
 
-	async def on_curse_another_rule(self, message):
-		message_content = message.content.lower().strip()
-		author = self.user
+	async def on_add_rule_no(self):
+		curse = self.curse
+		file_utils.create_file_for_user(self.user, curse.name + ".json", curse.get_json_string())
+		await self.send_user_message("New curse ***" + curse.name + "*** is saved.")
+		await self.switch_to_next_conversation(conversation_main_menu(self.user))
 
-		if message_content == "yes":
-			await self.start_new_rule_flow()
-		elif message_content == "no":
-			curse = self.curse
-			file_utils.create_file_for_user(self.user, curse.name + ".json", curse.get_json_string())
-			await self.send_user_message("New curse ***" + curse.name + "*** is saved.\nUse \"??curse_use " + curse.name + " <message to curse>\" to use the curse.")
-			self.stop_conversation()
+class conversation_util_yes_no_prompt(conversation_base):
+	"""Sends a yes/no prompt and calls a callback when an option is selected"""
+	
+	class yes_no_prompt_options(IntEnum):
+		YES = 1
+		NO = 2
+
+	def __init__(self, user, message, on_yes_selected, on_no_selected):
+		super().__init__(user)
+		self.message = message
+		self.on_yes_selected = on_yes_selected
+		self.on_no_selected = on_no_selected
+
+	async def start_conversation(self):
+		await super().start_conversation()
+		await self.send_user_message(self.message + "\n" + conversation_utils.get_enum_options(self.yes_no_prompt_options))
+		self.set_next_callback(self.on_answer_received)
+	
+	async def on_answer_received(self, message):
+		if await conversation_utils.is_string_int(message.content, self.user) == False:
+			return
+		
+		reply = int(message.content)
+		if reply == conversation_util_yes_no_prompt.yes_no_prompt_options.YES:
+			await self.stop_conversation(self.on_yes_selected)
+		elif reply == conversation_util_yes_no_prompt.yes_no_prompt_options.NO:
+			await self.stop_conversation(self.on_no_selected)
 		else:
-			await author.send("Response is not valid.\nReply \"YES\" or \"NO\"")
+			await self.send_user_message(message.content + " is not a valid option.")

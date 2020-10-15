@@ -17,9 +17,6 @@ class conversation_manager():
     
     def start_conversation(self, conversation):
         """Initializes a new conversation table and enables callbacks to be called."""
-
-        if self.is_in_converation(conversation.user) == True:
-            return
         
         self.conversations[conversation.user.id] = conversation
     

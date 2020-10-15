@@ -8,8 +8,7 @@ import json
 import random
 import file_utils
 from conversation_manager import conversation_manager
-from curse import *
-from conversations import  *
+from conversations import conversation_base, conversation_main_menu, conversation_create_curse
 import conversation_utils
 import user_metadata
 
@@ -38,7 +37,7 @@ async def on_message(message):
 	if not message.guild:
 		await conversation_manager_instance.process_message(message.author, message)
 	else:
-		enabled_curse = await user_metadata.get_enabled_curse(message.author)
+		enabled_curse = user_metadata.get_enabled_curse(message.author)
 		if enabled_curse:
 			await conversation_utils.replace_message_with_curse(message, enabled_curse)
 
@@ -48,9 +47,5 @@ async def on_message(message):
 @bot.command(name='curse_menu', help='Starts the main menu flow')
 async def custom_curse_menu(ctx):
 	await conversation_main_menu(ctx.author).start_conversation()
-
-@bot.command(name='curse_start', help='Starts creation of a new curse')
-async def custom_curse_start(ctx):
-	await conversation_create_curse(ctx.author).start_conversation()
 
 bot.run(TOKEN)

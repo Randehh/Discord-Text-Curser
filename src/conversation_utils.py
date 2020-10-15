@@ -1,8 +1,19 @@
 from discord import Webhook, RequestsWebhookAdapter
 import requests
 import os
+from enum import IntEnum
 
 guild_webhook_ids = {}
+
+def get_enum_options(enum):
+	message = "```"
+	for enum_value in enum:
+		if enum_value.value == -1:
+			continue
+		
+		pretty_enum_name = enum_value.name.replace("_", " ").title()
+		message = message + str(enum_value.value) + ":\t" + pretty_enum_name + "\n"
+	return message + "```"
 
 async def get_conversation_webhook(channel):
 	if not channel.guild.id in guild_webhook_ids:
