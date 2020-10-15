@@ -3,6 +3,7 @@ from enum import IntEnum
 import conversation_utils
 import file_utils
 import user_metadata
+import time
 
 class conversation_base():
 	"""Template for all other conversations, must be inherited"""
@@ -13,12 +14,13 @@ class conversation_base():
 		self.user = user
 		self.callback = self.no_callback_set
 		self.parent_conversation = None
+		self.last_update_time = time.time()
 
 	async def start_conversation(self):
 		conversation_base.conversation_manager.start_conversation(self)
 	
 	async def stop_conversation(self, child_callback_result = None):
-		conversation_base.conversation_manager.stop_conversation(self.user)
+		conversation_base.conversation_manager.stop_conversation(self.user.id)
 		if self.parent_conversation:
 			conversation_base.conversation_manager.start_conversation(self.parent_conversation)
 			if child_callback_result: await child_callback_result()
@@ -32,9 +34,11 @@ class conversation_base():
 		await next_conversation.start_conversation()
 
 	async def send_user_message(self, message_to_send):
+		self.last_update_time = time.time()
 		await self.user.send(message_to_send)
 	
 	async def on_receive_message(self, message):
+		self.last_update_time = time.time()
 		await self.callback(message)
 
 	def set_next_callback(self, callback):
