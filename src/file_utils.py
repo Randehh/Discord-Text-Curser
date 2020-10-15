@@ -3,7 +3,11 @@ import logging
 
 def get_user_folder(user):
 	"""Gets the root folder for a user."""
-	return "Curses/" + str(user.id)
+	return get_user_id_folder(user.id)
+
+def get_user_id_folder(user_id):
+	"""Gets the root folder for a user."""
+	return "Curses/" + str(user_id)
 	
 def create_folder_for_user(user):
 	"""Creates a personal folder for the given user if it does not exist."""
@@ -25,7 +29,7 @@ def read_file_for_user(user, file_name):
 	return read_file_on_path(fileNameWithFolder)
 
 def read_file_for_user_id(user_id, file_name):
-	fileNameWithFolder = "Curses/" + str(user_id) + "/" + file_name
+	fileNameWithFolder = get_user_id_folder(user_id) + "/" + file_name
 	return read_file_on_path(fileNameWithFolder)
 
 def read_file_on_path(path):
@@ -35,3 +39,17 @@ def read_file_on_path(path):
 	with open(path, 'r') as f:
 		file_read_data = f.read()
 		return file_read_data
+
+def get_files_for_user_id(user_id):
+	return os.listdir(get_user_id_folder(user_id))
+
+def delete_file_for_user(user, file):
+	rootFolder = get_user_folder(user)
+	delete_file(rootFolder + "/" + file)
+
+def delete_file(file_path):
+	if not os.path.exists(file_path):
+		return False
+	else:
+		os.remove(file_path)
+		return True

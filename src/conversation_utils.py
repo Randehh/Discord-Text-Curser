@@ -2,8 +2,30 @@ from discord import Webhook, RequestsWebhookAdapter
 import requests
 import os
 from enum import IntEnum
+import file_utils
 
 guild_webhook_ids = {}
+
+def get_curses_for_user(user_id):
+	files = file_utils.get_files_for_user_id(user_id)
+	for index, file_name in enumerate(files):
+		files[index] = file_name.replace(".json", "")
+	return files
+
+def get_list_options(list, headers = {}):
+	message = "```"
+	count = 0
+	for value in list:		
+		if count in headers:
+			if count != 0:
+				message = message + "\n"
+			message = message + headers[count] + "\n"
+		
+		pretty_enum_name = value.replace("_", " ").title()
+		message = message + str(count + 1) + ":\t" + pretty_enum_name + "\n"
+		
+		count = count + 1
+	return message + "```"
 
 def get_enum_options(enum, headers = {}):
 	message = "```"
