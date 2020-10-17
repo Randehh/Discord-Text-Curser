@@ -3,6 +3,8 @@ import requests
 import os
 from enum import IntEnum
 import file_utils
+import re
+import random
 
 guild_webhook_ids = {}
 
@@ -45,6 +47,19 @@ def get_enum_options(enum, headers = {}):
 		count = count + 1
 	return message + "```"
 
+def get_list_to_string(list):
+	message = ""
+	for list_entry in list:
+		message = message + list_entry + ", "
+	return message.rstrip(", ")
+
+def replace_word_with_random_word(string, word_to_replace, replacement_list):
+	def callback(matchobj):
+		return random.choice(replacement_list)
+
+	return re.sub(word_to_replace, callback, string)
+
+# Webhook functions
 async def get_conversation_webhook(channel):
 	if not channel.guild.id in guild_webhook_ids:
 		return await create_new_webhook(channel)

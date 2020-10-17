@@ -111,10 +111,12 @@ class curse_rule_replace(curse_rule):
         self.replacement = replacement
     
     def parse(self, text):
-        return text.replace(self.to_replace, self.replacement)
+        for to_replace_word in self.to_replace:
+            text = conversation_utils.replace_word_with_random_word(text, to_replace_word, self.replacement)
+        return text
     
     def get_description(self):
-        return "Replace ***" + self.to_replace + "*** with ***" + self.replacement + "***"
+        return "Replace ***" + conversation_utils.get_list_to_string(self.to_replace) + "*** with ***" + conversation_utils.get_list_to_string(self.replacement) + "***"
 
     def serialize(self):
         return {
@@ -131,16 +133,16 @@ class curse_rule_replace(curse_rule):
     
     async def request_parameters(self, conversation, all_params_set_callback):
         await super().request_parameters(conversation, all_params_set_callback)
-        await conversation.send_user_message("What would you like to replace?")
+        await conversation.send_user_message("What would you like to replace? Multiple are allowed, where each new line is an entry.")
         conversation.set_next_callback(self.on_get_param_to_replace)
     
     async def on_get_param_to_replace(self, message):
-        self.to_replace = message.content
-        await self.request_parameters_data["conversation"].send_user_message("What would you like to replace ***" + self.to_replace + "*** with?")
+        self.to_replace = message.content.split("\n")
+        await self.request_parameters_data["conversation"].send_user_message("What would you like to replace ***" + conversation_utils.get_list_to_string(self.to_replace) + "*** with? Multiple are allowed, where each new line is an entry.")
         self.request_parameters_data["conversation"].set_next_callback(self.on_get_param_replacement)
     
     async def on_get_param_replacement(self, message):
-        self.replacement = message.content
+        self.replacement = message.content.split("\n")
         await self.request_parameters_data["conversation"].send_user_message("Rule set: " + self.get_description())
         await self.request_parameters_data["all_params_set_callback"](self)
         self.request_parameters_data = None
