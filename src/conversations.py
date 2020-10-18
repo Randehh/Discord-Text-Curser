@@ -52,14 +52,14 @@ class conversation_main_menu(conversation_base):
 	"""Contains logic for the main menu, flowing into different types of conversations from there"""
 	
 	class menu_options(IntEnum):
-		CREATE_CURSE = 1		# Done
-		EDIT_CURSE = 2			# Not implemented
-		REMOVE_CURSE = 3		# Done
-		ENABLE_CURSE = 4		# Done
-		DISABLE_CURSE = 5		# Done
-		BROWSE_POPULAR = 6		# Not implemented
-		BROWSE_BY_USER = 7		# Not implemented
-		BROWSE_BY_SERVER = 8	# Not implemented
+		CREATE_CURSE = 1			# Done
+		EDIT_CURSE = 2				# Not implemented
+		REMOVE_CURSE = 3			# Done
+		ENABLE_CURSE = 4			# Done
+		DISABLE_ACTIVE_CURSE = 5		# Done
+		BROWSE_POPULAR = 6			# Not implemented
+		BROWSE_BY_USER = 7			# Not implemented
+		BROWSE_BY_SERVER = 8		# Not implemented
 
 	def __init__(self, user):
 		super().__init__(user)
@@ -78,12 +78,16 @@ class conversation_main_menu(conversation_base):
 		selection = int(message.content)
 		if selection == conversation_main_menu.menu_options.CREATE_CURSE:
 			await self.switch_to_next_conversation(conversation_create_curse(self.user))
+
 		elif selection == conversation_main_menu.menu_options.REMOVE_CURSE:
 			await self.switch_to_next_conversation(conversation_remove_curse(self.user))
+
 		elif selection == conversation_main_menu.menu_options.ENABLE_CURSE:
 			await self.switch_to_next_conversation(conversation_enable_curse(self.user))
-		elif selection == conversation_main_menu.menu_options.DISABLE_CURSE:
-			user_metadata.set_curse_disabled(self.user)
+
+		elif selection == conversation_main_menu.menu_options.DISABLE_ACTIVE_CURSE:
+			self.switch_to_next_conversation(conversation_disable_active_curse(self.user))
+			
 		elif selection == conversation_main_menu.menu_options.BROWSE_BY_USER:
 			await self.switch_to_next_conversation(conversation_browse_by_user(self.user))
 
@@ -100,6 +104,33 @@ class conversation_enable_curse(conversation_base):
 		await super().start_conversation()
 		await self.send_user_message("Which curse would you like to activate?")
 		self.set_next_callback(self.on_curse_name_received)
+	
+	async def on_curse_name_received(self, message):
+		curse_name = message.content.lower().replace(" ", "_")
+		user_metadata.set_curse_enabled(self.user, self.user.id, curse_name)
+
+		message_to_send = "Curse activated: ***" + curse_name + "***"
+		await self.user.send(message_to_send)
+		await self.stop_conversation()
+
+class conversation_disable_active_curse(conversation_base):
+	"""Disables the active curse"""
+	
+	def __init__(self, user):
+		super().__init__(user)
+
+	async def start_conversation(self):
+		await super().start_conversation()
+
+		message_to_send = ""
+		if not user_metadata.is_curse_enabled(self.user):
+			message_to_send = "You have no curse enabled."
+		else:
+			user_metadata.set_curse_disabled(self.user)
+			message_to_send = "Curse disabled."
+		
+		await self.send_user_message(message_to_send)
+		await self.stop_conversation()
 	
 	async def on_curse_name_received(self, message):
 		curse_name = message.content.lower().replace(" ", "_")
