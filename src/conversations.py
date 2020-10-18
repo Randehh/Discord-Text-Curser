@@ -86,8 +86,8 @@ class conversation_main_menu(conversation_base):
 			await self.switch_to_next_conversation(conversation_enable_curse(self.user))
 
 		elif selection == conversation_main_menu.menu_options.DISABLE_ACTIVE_CURSE:
-			self.switch_to_next_conversation(conversation_disable_active_curse(self.user))
-			
+			await self.switch_to_next_conversation(conversation_disable_active_curse(self.user))
+
 		elif selection == conversation_main_menu.menu_options.BROWSE_BY_USER:
 			await self.switch_to_next_conversation(conversation_browse_by_user(self.user))
 
