@@ -21,10 +21,10 @@ def get_curse_instance(user_id, curse_name):
     curse_instances[curse_id] = new_curse_instance
     return new_curse_instance
 
-def set_curse_enabled(user, curse_name):
+def set_curse_enabled(user, owner_user_id, curse_name):
     enabled_curses[user.id] = {
         "curse_name": curse_name,
-        "user_id": user.id
+        "owner_user_id": owner_user_id
     }
 
 def set_curse_disabled(user):
@@ -35,5 +35,5 @@ def is_curse_enabled(user):
 
 def get_enabled_curse(user):
     if is_curse_enabled(user) == True:
-        return get_curse_instance(enabled_curses[user.id]["user_id"], enabled_curses[user.id]["curse_name"])
+        return get_curse_instance(enabled_curses[user.id]["owner_user_id"], enabled_curses[user.id]["curse_name"])
     return None

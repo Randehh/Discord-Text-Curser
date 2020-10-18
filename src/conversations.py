@@ -84,6 +84,8 @@ class conversation_main_menu(conversation_base):
 			await self.switch_to_next_conversation(conversation_enable_curse(self.user))
 		elif selection == conversation_main_menu.menu_options.DISABLE_CURSE:
 			user_metadata.set_curse_disabled(self.user)
+		elif selection == conversation_main_menu.menu_options.BROWSE_BY_USER:
+			await self.switch_to_next_conversation(conversation_browse_by_user(self.user))
 
 # ==================================================================================
 # =	Curse management
@@ -101,7 +103,7 @@ class conversation_enable_curse(conversation_base):
 	
 	async def on_curse_name_received(self, message):
 		curse_name = message.content.lower().replace(" ", "_")
-		user_metadata.set_curse_enabled(self.user, curse_name)
+		user_metadata.set_curse_enabled(self.user, self.user.id, curse_name)
 
 		message_to_send = "Curse activated: ***" + curse_name + "***"
 		await self.user.send(message_to_send)
@@ -222,6 +224,46 @@ class conversation_remove_curse(conversation_base):
 # ==================================================================================
 # =	Browsing
 # ==================================================================================
+class conversation_browse_by_user(conversation_base):
+	"""Browse a list of user's curses"""
+	
+	def __init__(self, user):
+		super().__init__(user)
+
+	async def start_conversation(self):
+		await super().start_conversation()
+		await self.send_user_message("Enter the ID of the user you'd like to browse.")
+		self.set_next_callback(self.on_user_message_received)
+	
+	async def on_user_message_received(self, message):
+		if await conversation_utils.is_string_int(message.content, self.user) == False:
+			return
+		
+		self.browsing_user_id = int(message.content)
+		files_for_user = file_utils.get_files_for_user_id(self.browsing_user_id)
+		if len(files_for_user) <= 0:
+			await self.user.send("User with ID `" + str(self.browsing_user_id) + "` does not have any curses.")
+			await self.stop_conversation()
+			return
+		
+		self.files_display_names = []
+		for file_name in files_for_user:
+			self.files_display_names.append(file_name.replace(".json", ""))
+		
+		await self.send_user_message("Which curse would you like to interact with?\n" + conversation_utils.get_list_options(self.files_display_names))
+		self.set_next_callback(self.on_curse_message_received)
+	
+	async def on_curse_message_received(self, message):
+		if await conversation_utils.is_string_int(message.content, self.user) == False:
+			return
+
+		curse_choice = int(message.content) - 1
+		curse_name = self.files_display_names[curse_choice].replace(".json", "").lower().replace(" ", "_")
+		user_metadata.set_curse_enabled(self.user, self.browsing_user_id, curse_name)
+
+		message_to_send = "Curse activated: ***" + curse_name + "***"
+		await self.user.send(message_to_send)
+		await self.stop_conversation()
 
 # ==================================================================================
 # =	Utilities
