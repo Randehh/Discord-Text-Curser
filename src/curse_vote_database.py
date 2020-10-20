@@ -2,7 +2,7 @@ import file_utils
 import time
 import json
 
-FILE_LOCATION = "Curses/Voting"
+FILE_LOCATION = "Voting"
 MAXIMUM_BACKUP_COUNT = 24
 
 voting_table = {}
