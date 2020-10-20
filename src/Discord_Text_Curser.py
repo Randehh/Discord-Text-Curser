@@ -57,6 +57,7 @@ async def custom_curse_menu(ctx):
 ##########################################
 async def voting_save_routine():
 	delay = 60 * 60 	# Once per hour
+	delay = 60
 	while True:
 		await asyncio.sleep(delay)
 		curse_vote_database.save_backup()

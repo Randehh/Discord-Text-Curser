@@ -1,16 +1,13 @@
 from curse import curse
 import json
 import file_utils
-import logging
+import curse_utils
 
 enabled_curses = {}
 curse_instances = {}
 
-def get_curse_id(user_id, curse_name):
-    return str(user_id) + curse_name
-
 def get_curse_instance(user_id, curse_name):
-    curse_id = get_curse_id(user_id, curse_name)
+    curse_id = curse_utils.get_curse_id(user_id, curse_name)
     if curse_id in curse_instances:
         return curse_instances[curse_id]
     

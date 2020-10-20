@@ -93,14 +93,6 @@ async def update_webhook_channel(hook, target_channel):
 	requests.patch('https://discordapp.com/api/webhooks/' + WEBHOOK_ID, json=json, headers=headers)
 	return hook
 
-async def is_string_int(string, user):
-	try: 
-		int(string)
-		return True
-	except ValueError:
-		await user.send(string + " is not a number.")
-		return False
-
 async def replace_message_with_curse(message, curse):
 	await message.delete()
 	webhook = await get_conversation_webhook(message.channel)
