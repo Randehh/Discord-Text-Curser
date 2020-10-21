@@ -66,7 +66,7 @@ class conversation_main_menu(conversation_base):
 
 	async def start_conversation(self):
 		await super().start_conversation()
-		menu_options_string = conversation_utils.get_enum_options(conversation_main_menu.menu_options, { 0: "Curse browsing", 3: "Curse management"})
+		menu_options_string = conversation_utils.get_enum_options(conversation_main_menu.menu_options, { 0: "Curse browsing", 4: "Curse management"})
 		message_to_send = "What would you like to do?\n" + menu_options_string + "Reply with the number."
 		await self.send_user_message(message_to_send)
 		self.set_next_callback(self.on_selection_received)
@@ -344,13 +344,19 @@ class conversation_util_show_user_curses(conversation_base):
 				return
 		
 		else:
-			if curse_choice == 5:
+			if curse_choice == 4:
+				user_metadata.set_favorite_curse(self.user, str(self.browsing_user_id) + self.curse_name)
+				await self.user.send("Set curse as favorite!")
+				await self.stop_conversation()
+				return
+
+			elif curse_choice == 5:
 				curse_vote_database.vote_up(str(self.browsing_user_id) + self.curse_name, self.user.id)
 				await self.user.send("Voted up!")
 				await self.stop_conversation()
 				return
 			
-			if curse_choice == 6:
+			elif curse_choice == 6:
 				curse_vote_database.vote_down(str(self.browsing_user_id) + self.curse_name, self.user.id)
 				await self.user.send("Voted down!")
 				await self.stop_conversation()

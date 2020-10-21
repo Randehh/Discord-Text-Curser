@@ -68,7 +68,7 @@ def save_backup():
             "downvotes": list(voting_table[curse_id]["downvotes"])
         }
     json_data = json.dumps(object_to_save)
-    file_utils.create_file_on_path(FILE_LOCATION + "/" + str(time.time()), json_data)
+    file_utils.create_file_on_path(FILE_LOCATION + "/" + str(time.time()) + ".json", json_data)
 
     #Check for limit
     files = file_utils.get_files_in_folder(FILE_LOCATION)

@@ -66,3 +66,12 @@ def get_files_for_user_id(user_id):
 def delete_file_for_user(user, file):
 	rootFolder = get_user_folder(user)
 	delete_file_on_path(rootFolder + "/" + file)
+
+# Backup utils
+def get_latest_in_folder(folder_path):
+	files = get_files_in_folder(folder_path)
+	if len(files) == 0:
+		return
+	
+	files.sort()
+	return files[len(files) - 1]

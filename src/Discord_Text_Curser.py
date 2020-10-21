@@ -24,6 +24,7 @@ conversation_manager_instance = conversation_manager()
 conversation_base.conversation_manager = conversation_manager_instance
 
 curse_vote_database.load_latest()
+user_metadata.load_latest()
 
 commandPrefix = '??'
 bot = commands.Bot(command_prefix=commandPrefix)
@@ -55,12 +56,12 @@ async def custom_curse_menu(ctx):
 ##########################################
 # Loop for routine events
 ##########################################
-async def voting_save_routine():
+async def backup_routine():
 	delay = 60 * 60 	# Once per hour
-	delay = 60
 	while True:
 		await asyncio.sleep(delay)
 		curse_vote_database.save_backup()
+		user_metadata.save_backup()
 
 async def close_conversations_routine():
 	delay = 60
@@ -68,6 +69,6 @@ async def close_conversations_routine():
 		await asyncio.sleep(delay)
 		await conversation_manager_instance.attempt_close_conversations()
 
-asyncio.get_event_loop().create_task(voting_save_routine())
+asyncio.get_event_loop().create_task(backup_routine())
 asyncio.get_event_loop().create_task(close_conversations_routine())
 bot.run(TOKEN)
