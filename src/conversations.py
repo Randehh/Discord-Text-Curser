@@ -82,6 +82,9 @@ class conversation_main_menu(conversation_base):
 		elif selection == conversation_main_menu.menu_options.DISABLE_ACTIVE_CURSE:
 			await self.switch_to_next_conversation(conversation_disable_active_curse(self.user))
 
+		elif selection == conversation_main_menu.menu_options.BROWSE_POPULAR:
+			await self.switch_to_next_conversation(conversation_browse_by_popular(self.user))
+
 		elif selection == conversation_main_menu.menu_options.BROWSE_BY_USER:
 			await self.switch_to_next_conversation(conversation_browse_by_user(self.user))
 
@@ -207,6 +210,16 @@ class conversation_add_curse_rule(conversation_base):
 # ==================================================================================
 # =	Browsing
 # ==================================================================================
+class conversation_browse_by_popular(conversation_base):
+	"""Browse a list of the most popular curses"""
+	
+	def __init__(self, user):
+		super().__init__(user)
+
+	async def start_conversation(self):
+		await super().start_conversation()
+		await self.switch_to_next_conversation(conversation_util_show_curses(self.user, curse_vote_database.get_highest_voted_curses(10)))
+
 class conversation_browse_by_user(conversation_base):
 	"""Browse a list of user's curses"""
 	
@@ -267,7 +280,6 @@ class conversation_util_show_user_curses(conversation_base):
 	def __init__(self, user, user_id):
 		super().__init__(user)
 		self.browsing_user_id = user_id
-		self.can_edit_curse = user.id == user_id
 	
 	async def start_conversation(self):
 		await super().start_conversation()
@@ -278,11 +290,42 @@ class conversation_util_show_user_curses(conversation_base):
 			await self.stop_conversation()
 			return
 		
-		self.files_display_names = []
+		curse_id_list = []
 		for file_name in files_for_user:
-			self.files_display_names.append(file_name.replace(".json", ""))
+			curse_id_list.append(curse_utils.get_curse_id(self.browsing_user_id, file_name.replace(".json", "")))
 		
-		await self.send_user_message("Which curse would you like to interact with?\n" + conversation_utils.get_list_options(self.files_display_names))
+		await self.switch_to_next_conversation(conversation_util_show_curses(self.user, curse_id_list))
+
+class conversation_util_show_curses(conversation_base):
+	class curse_options(IntEnum):
+		USE_CURSE = 1
+		EDIT_CURSE = 2,
+		DELETE_CURSE = 3,
+
+
+	def __init__(self, user, curse_id_list):
+		super().__init__(user)
+		self.curse_metadata = []
+		self.curse_list = []
+		for curse_id in curse_id_list:
+			user_id = curse_utils.get_user_from_curse_id(curse_id)
+			curse_name = curse_utils.get_name_from_curse_id(curse_id)
+			self.curse_metadata.append({
+				"user_id": user_id,
+				"curse_id": curse_id
+			})
+			self.curse_list.append(user_metadata.get_curse_instance(user_id, curse_name))
+	
+	async def start_conversation(self):
+		await super().start_conversation()
+		
+		self.display_names = []
+		self.curse_names = []
+		for curse_instance in self.curse_list:
+			self.curse_names.append(curse_instance.name)
+			self.display_names.append(curse_instance.name.replace("_", " ").title())
+		
+		await self.send_user_message("Which curse would you like to interact with?\n" + conversation_utils.get_list_options(self.display_names))
 		self.set_next_callback(self.on_curse_message_received)
 
 	async def on_curse_message_received(self, message):
@@ -290,17 +333,23 @@ class conversation_util_show_user_curses(conversation_base):
 			return
 
 		curse_choice = int(message.content) - 1
-		self.curse_name = self.files_display_names[curse_choice].replace(".json", "").lower().replace(" ", "_")
+		self.selected_curse_data = {
+			"instance": self.curse_list[curse_choice],
+			"name": self.curse_names[curse_choice],
+			"display_name": self.display_names[curse_choice],
+			"user_id": self.curse_metadata[curse_choice]["user_id"],
+			"curse_id": self.curse_metadata[curse_choice]["curse_id"],
+		}
 
-		self.curse_scores = curse_vote_database.get_curse_scores(str(self.browsing_user_id) + self.curse_name)
-		message_to_send = "Selected: ***" + self.curse_name + "***\n"
-		message_to_send = message_to_send + "Score: " + str(self.curse_scores["total"]) + " (" + str(self.curse_scores["upvotes"]) + "/" + str(self.curse_scores["downvotes"]) + ")\n"
+		self.curse_scores = curse_vote_database.get_curse_scores(self.selected_curse_data["curse_id"])
+		message_to_send = "Selected: ***" + self.selected_curse_data["display_name"] + "***\n"
+		message_to_send = message_to_send + "Score: " + str(self.curse_scores["total"]) + " (" + str(len(self.curse_scores["upvotes"])) + "/" + str(len(self.curse_scores["downvotes"])) + ")\n"
 
 		options_list = [ "Use curse",				# 1 - DONE
 						"Show details",				# 2 - DONE
 						"Curse message" ] 			# 3 - DONE
 		
-		if self.can_edit_curse:
+		if self.selected_curse_data["user_id"] == self.user.id:
 			options_list.append("Edit curse") 		# 4 - NOT IMPLEMENTED
 			options_list.append("Delete curse") 	# 5 - DONE
 		
@@ -319,45 +368,43 @@ class conversation_util_show_user_curses(conversation_base):
 		
 		curse_choice = int(message.content)
 		if curse_choice == 1: # Enable curse
-			user_metadata.set_curse_enabled(self.user, self.browsing_user_id, self.curse_name)
-			await self.user.send("Enabled curse `" + self.curse_name + "`")
+			user_metadata.set_curse_enabled(self.user, self.selected_curse_data["user_id"], self.selected_curse_data["name"])
+			await self.user.send("Enabled curse `" + self.selected_curse_data["display_name"] + "`")
 			await self.stop_conversation()
 			return
 		
 		elif curse_choice == 2: # Show details
-			curse_instance = user_metadata.get_curse_instance(self.browsing_user_id, self.curse_name)
-			curse_description = curse_instance.get_rules_descriptions()
-			await self.user.send("Details for curse ***" + self.curse_name + "***\n\n" + curse_description)
+			curse_description = self.selected_curse_data["instance"].get_rules_descriptions()
+			await self.user.send("Details for curse ***" + self.selected_curse_data["display_name"] + "***\n\n" + curse_description)
 			await self.stop_conversation()
 			return
 
 		elif curse_choice == 3: # Use curse
-			curse_instance = user_metadata.get_curse_instance(self.browsing_user_id, self.curse_name)
-			await self.switch_to_next_conversation(conversation_use_curse(self.user, curse_instance))
+			await self.switch_to_next_conversation(conversation_use_curse(self.user, self.selected_curse_data["instance"]))
 			return
 		
-		if self.can_edit_curse:
+		if self.selected_curse_data["user_id"] == self.user.id:
 			if curse_choice == 5:
-				file_utils.delete_file_for_user(self.user, self.curse_name + ".json")
+				file_utils.delete_file_for_user(self.user, self.selected_curse_data["name"] + ".json")
 				await self.user.send("Curse removed.")
 				await self.stop_conversation()
 				return
 		
 		else:
 			if curse_choice == 4:
-				user_metadata.set_favorite_curse(self.user, str(self.browsing_user_id) + self.curse_name)
+				user_metadata.set_favorite_curse(self.user, self.selected_curse_data["curse_id"])
 				await self.user.send("Set curse as favorite!")
 				await self.stop_conversation()
 				return
 
 			elif curse_choice == 5:
-				curse_vote_database.vote_up(str(self.browsing_user_id) + self.curse_name, self.user.id)
+				curse_vote_database.vote_up(self.selected_curse_data["curse_id"], self.user.id)
 				await self.user.send("Voted up!")
 				await self.stop_conversation()
 				return
 			
 			elif curse_choice == 6:
-				curse_vote_database.vote_down(str(self.browsing_user_id) + self.curse_name, self.user.id)
+				curse_vote_database.vote_down(self.selected_curse_data["curse_id"], self.user.id)
 				await self.user.send("Voted down!")
 				await self.stop_conversation()
 				return
