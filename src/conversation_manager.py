@@ -12,10 +12,11 @@ class conversation_manager():
         """Automatically called every time the bot receives a direct message."""
 
         if self.is_in_converation(user_id) == False:
-            return
+            return False
         
         conversation = self.conversations[user_id]
         await conversation.on_receive_message(message)
+        return True
     
     def start_conversation(self, conversation):
         """Initializes a new conversation table and enables callbacks to be called."""

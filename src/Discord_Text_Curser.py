@@ -40,7 +40,8 @@ async def on_message(message):
 	await bot.process_commands(message)
 	
 	if not message.guild:
-		await conversation_manager_instance.process_message(message.author.id, message)
+		if not await conversation_manager_instance.process_message(message.author.id, message):
+			await conversation_main_menu(message.author).start_conversation()
 	else:
 		enabled_curse = user_metadata.get_enabled_curse(message.author)
 		if enabled_curse:
