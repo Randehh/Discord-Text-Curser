@@ -55,11 +55,12 @@ class conversation_main_menu(conversation_base):
 	
 	class menu_options(IntEnum):
 		BROWSE_OWN = 1				# Done
-		BROWSE_POPULAR = 2			# Not implemented
-		BROWSE_BY_USER = 3			# Done
-		BROWSE_BY_SERVER = 4		# Not implemented
-		CREATE_CURSE = 5			# Done
-		DISABLE_ACTIVE_CURSE = 6	# Done
+		BROWSE_FAVORITES = 2		# Done
+		BROWSE_POPULAR = 3			# Not implemented
+		BROWSE_BY_USER = 4			# Done
+		BROWSE_BY_SERVER = 5		# Not implemented
+		CREATE_CURSE = 6			# Done
+		DISABLE_ACTIVE_CURSE = 7	# Done
 
 	def __init__(self, user):
 		super().__init__(user)
@@ -90,6 +91,9 @@ class conversation_main_menu(conversation_base):
 
 		elif selection == conversation_main_menu.menu_options.BROWSE_OWN:
 			await self.switch_to_next_conversation(conversation_util_show_user_curses(self.user, self.user.id))
+		
+		elif selection == conversation_main_menu.menu_options.BROWSE_FAVORITES:
+			await self.switch_to_next_conversation(conversation_browse_favorite_curses(self.user))
 
 # ==================================================================================
 # =	Curse management
@@ -237,6 +241,14 @@ class conversation_browse_by_user(conversation_base):
 		
 		await self.switch_to_next_conversation(conversation_util_show_user_curses(self.user, int(message.content)))
 
+class conversation_browse_favorite_curses(conversation_base):
+	def __init__(self, user):
+		super().__init__(user)
+
+	async def start_conversation(self):
+		await super().start_conversation()
+		await self.switch_to_next_conversation(conversation_util_show_curses(self.user, user_metadata.get_favorite_curses(self.user)))
+
 # ==================================================================================
 # =	Utilities
 # ==================================================================================
@@ -354,7 +366,7 @@ class conversation_util_show_curses(conversation_base):
 			options_list.append("Delete curse") 	# 5 - DONE
 		
 		else:
-			options_list.append("Mark as favorite") # 4 - NOT IMPLEMENTED
+			options_list.append("Mark as favorite") # 4 - DONE
 			options_list.append("Vote up") 			# 5 - DONE
 			options_list.append("Vote down") 		# 6 - DONE
 		
