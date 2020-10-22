@@ -56,7 +56,7 @@ class conversation_main_menu(conversation_base):
 	class menu_options(IntEnum):
 		BROWSE_OWN = 1				# Done
 		BROWSE_FAVORITES = 2		# Done
-		BROWSE_POPULAR = 3			# Not implemented
+		BROWSE_POPULAR = 3			# Done
 		BROWSE_BY_USER = 4			# Done
 		BROWSE_BY_SERVER = 5		# Not implemented
 		CREATE_CURSE = 6			# Done
