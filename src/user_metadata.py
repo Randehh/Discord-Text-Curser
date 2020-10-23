@@ -84,6 +84,12 @@ def remove_favorite_curse(user, curse_id):
 	
 	user_data[user.id]["favorite_curses"].discard(curse_id)
 
+def is_favorite_curse(user, curse_id):
+	if not "favorite_curses" in user_data[user.id]:
+		return False
+	
+	return curse_id in user_data[user.id]["favorite_curses"]
+
 #File management
 def load_latest():
 	file_utils.create_folder_on_path(FILE_LOCATION)

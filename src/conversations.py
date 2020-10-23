@@ -58,9 +58,8 @@ class conversation_main_menu(conversation_base):
 		BROWSE_FAVORITES = 2		# Done
 		BROWSE_POPULAR = 3			# Done
 		BROWSE_BY_USER = 4			# Done
-		BROWSE_BY_SERVER = 5		# Not implemented
-		CREATE_CURSE = 6			# Done
-		DISABLE_ACTIVE_CURSE = 7	# Done
+		CREATE_CURSE = 5			# Done
+		DISABLE_ACTIVE_CURSE = 6	# Done
 
 	def __init__(self, user):
 		super().__init__(user)
@@ -247,7 +246,13 @@ class conversation_browse_favorite_curses(conversation_base):
 
 	async def start_conversation(self):
 		await super().start_conversation()
-		await self.switch_to_next_conversation(conversation_util_show_curses(self.user, user_metadata.get_favorite_curses(self.user)))
+
+		favorite_curses = user_metadata.get_favorite_curses(self.user)
+		if len(favorite_curses) == 0:
+			await self.user.send("You have no favorite curses.")
+			await self.stop_conversation()
+			return
+		await self.switch_to_next_conversation(conversation_util_show_curses(self.user, favorite_curses))
 
 # ==================================================================================
 # =	Utilities
@@ -366,7 +371,10 @@ class conversation_util_show_curses(conversation_base):
 			options_list.append("Delete curse") 	# 5 - DONE
 		
 		else:
-			options_list.append("Mark as favorite") # 4 - DONE
+			if not user_metadata.is_favorite_curse(self.user, self.selected_curse_data["curse_id"]):
+				options_list.append("Mark as favorite") # 4 - DONE
+			else:
+				options_list.append("Remove from favorites") # 4 - DONE
 			options_list.append("Vote up") 			# 5 - DONE
 			options_list.append("Vote down") 		# 6 - DONE
 		
@@ -404,8 +412,12 @@ class conversation_util_show_curses(conversation_base):
 		
 		else:
 			if curse_choice == 4:
-				user_metadata.set_favorite_curse(self.user, self.selected_curse_data["curse_id"])
-				await self.user.send("Set curse as favorite!")
+				if not user_metadata.is_favorite_curse(self.user, self.selected_curse_data["curse_id"]):
+					user_metadata.set_favorite_curse(self.user, self.selected_curse_data["curse_id"])
+					await self.user.send("Set curse as favorite!")
+				else:
+					user_metadata.remove_favorite_curse(self.user, self.selected_curse_data["curse_id"])
+					await self.user.send("Removed curse from favorites!")
 				await self.stop_conversation()
 				return
 
