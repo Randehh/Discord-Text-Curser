@@ -1,12 +1,15 @@
 from enum import IntEnum
 import json
 import conversation_utils
+import curse_utils
+import random
 
 class rule_types(IntEnum):
     INVALID = -1
     REPLACE = 1
     INSERT = 2
     REPLACE_WORD = 3
+    INSERT_CHARACTER = 4
 
 def create_rule_from_type(rule_type):
     """Create a new curse rule by the given rule type.
@@ -19,7 +22,9 @@ def create_rule_from_type(rule_type):
     if rule_type == rule_types.REPLACE.value:
         return curse_rule_replace("", "")
     elif rule_type == rule_types.INSERT.value:
-        return curse_rule_insert("", 0)
+        return curse_rule_insert_word("", [0])
+    elif rule_type == rule_types.INSERT_CHARACTER.value:
+        return curse_rule_insert_character("", [0])
     elif rule_type == rule_types.REPLACE_WORD.value:
         return curse_rule_replace_word("", "")
     
@@ -203,30 +208,45 @@ class curse_rule_replace_word(curse_rule):
         await self.request_parameters_data["all_params_set_callback"](self)
         self.request_parameters_data = None
 
-class curse_rule_insert(curse_rule):
-    """Parses text by inserting a character sequence every given amount of words."""
-
+class curse_rule_insert_base(curse_rule):
     def __init__(self, to_insert, frequency):
-        self.rule_type = rule_types.INSERT.value
         self.to_insert = to_insert
         self.frequency = frequency
     
-    def parse(self, text):
-        new_text = ""
-        count = 0
-        text_split = text.split()
-        for word in text_split:
-            new_text = new_text + word + " "
-            count = count + 1
-            if count == self.frequency:
-                new_text = new_text + self.to_insert + " "
-                count = 0
-        
-        return new_text
+    def update_frequency(self):
+        if len(self.frequency) == 1:
+            self.next_frequency = self.frequency[0]
+        else:
+            self.next_frequency = random.randrange(self.frequency[0], self.frequency[1])
     
+    def get_insert_type(self):
+        raise NotImplementedError()
+
     def get_description(self):
-        return "Insert ***" + self.to_insert + "*** after each ***" + str(self.frequency) + "*** words"
+        if len(self.frequency) == 1:
+            return "Insert ***" + self.to_insert + "*** after each ***" + str(self.frequency[0]) + "*** " + self.get_insert_type()
+        elif len(self.frequency) == 2:
+            return "Insert ***" + self.to_insert + "*** between a range of ***" + str(self.frequency[0]) + " and " + str(self.frequency[1]) + "*** " + self.get_insert_type()
+
+    def parse(self, text):
+        self.new_text = ""
+        self.count = 0
+        self.update_frequency()
+
+        def loop_update(self, to_add):
+            self.new_text = self.new_text + to_add
+            self.count = self.count + 1
+            if self.count == self.next_frequency:
+                self.new_text = self.new_text + self.to_insert
+                self.count = 0
+                self.update_frequency()
+        
+        self.insert_parse_loop(text, loop_update)
+        return self.new_text
     
+    def insert_parse_loop(self, text, callback):
+        raise NotImplementedError()
+
     def serialize(self):
         return {
             "type": self.rule_type,
@@ -247,14 +267,62 @@ class curse_rule_insert(curse_rule):
     
     async def on_get_param_to_insert(self, message):
         self.to_insert = message.content
-        await self.request_parameters_data["conversation"].send_user_message("After how many words would you like to insert ***" + self.to_insert + "***?")
+
+        message_to_send = "After how many " + self.get_insert_type() + " would you like to insert ***" + self.to_insert + "***?\n"
+        message_to_send = message_to_send + "For a range, seperate it by a comma as such: `2,5`."
+        await self.request_parameters_data["conversation"].send_user_message(message_to_send)
         self.request_parameters_data["conversation"].set_next_callback(self.on_get_param_frequency)
     
     async def on_get_param_frequency(self, message):
-        if await conversation_utils.is_string_int(message.content, self.request_parameters_data["conversation"].user) == False:
-            return
-        
-        self.frequency = int(message.content)
+        if "," in message.content:
+            message_split = message.content.split(",")
+            if len(message_split) != 2:
+                await self.request_parameters_data["conversation"].send_user_message("Please provide the message in the following format: `2,5`.")
+                return
+
+            if await curse_utils.is_string_int(message_split[0], self.request_parameters_data["conversation"].user) == False:
+                return
+
+            if await curse_utils.is_string_int(message_split[1], self.request_parameters_data["conversation"].user) == False:
+                return
+            
+            self.frequency = [int(message_split[0]), int(message_split[1])]
+
+        else:
+            if await curse_utils.is_string_int(message.content, self.request_parameters_data["conversation"].user) == False:
+                return
+            
+            self.frequency = [int(message.content)]
+
         await self.request_parameters_data["conversation"].send_user_message("Rule set: " + self.get_description())
         await self.request_parameters_data["all_params_set_callback"](self)
         self.request_parameters_data = None
+
+class curse_rule_insert_word(curse_rule_insert_base):
+    """Parses text by inserting a character sequence every given amount of words."""
+
+    def __init__(self, to_insert, frequency):
+        super().__init__(to_insert, frequency)
+        self.rule_type = rule_types.INSERT.value
+
+    def get_insert_type(self):
+        return "words"
+
+    def insert_parse_loop(self, text, callback):
+        text_split = text.split()
+        for word in text_split:
+            callback(self, word + " ")
+
+class curse_rule_insert_character(curse_rule_insert_base):
+    """Parses text by inserting a character sequence every given amount of characters."""
+
+    def __init__(self, to_insert, frequency):
+        super().__init__(to_insert, frequency)
+        self.rule_type = rule_types.INSERT_CHARACTER.value
+    
+    def get_insert_type(self):
+        return "characters"
+
+    def insert_parse_loop(self, text, callback):
+        for character in text:
+            callback(self, character)
