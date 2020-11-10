@@ -16,6 +16,7 @@ import curse_vote_database
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
+DEVELOPER_MODE = os.getenv('DEVELOPER_MODE')
 
 logging.basicConfig(level=logging.INFO)
 
@@ -58,7 +59,10 @@ async def custom_curse_menu(ctx):
 # Loop for routine events
 ##########################################
 async def backup_routine():
-	delay = 60 * 60 	# Once per hour
+	delay = 60 * 30 	# Once per half an hour
+	if DEVELOPER_MODE == 1:
+		delay = 60		# Once per minute
+
 	while True:
 		await asyncio.sleep(delay)
 		curse_vote_database.save_backup()
